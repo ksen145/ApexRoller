@@ -200,7 +200,7 @@ class RollApp:
         for i, name in enumerate(selected_names, 1):
             self.result_text.insert(tk.END, f"{i}. {name}\n", "selected")
         
-        self.result_text.insert(tk.END, f"\nDidn't drop: ", "label")
+        self.result_text.insert(tk.END, "\nDidn't drop: ", "label")
         self.result_text.insert(tk.END, f"{self.previous_excluded}\n", "excluded")
         
         if not self.is_first_roll:

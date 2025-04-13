@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apex Roller</title>
+    <link rel="icon" href="assets/apex-logo.ico" type="image/x-icon">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        #app {
+            width: 450px;
+            height: 550px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 {
+            text-align: center;
+            padding: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .input-frame, .result-frame {
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .input-frame h3, .result-frame h3 {
+            margin-top: 0;
+            font-size: 16px;
+            font-weight: normal;
+        }
+
+        .name-entry {
+            display: flex;
+            margin: 5px 0;
+            align-items: center;
+        }
+
+        .name-entry label {
+            width: 70px;
+        }
+
+        .name-entry input {
+            flex: 1;
+            padding: 5px;
+            font-size: 14px;
+        }
+
+        .button-frame {
+            display: flex;
+            justify-content: center;
+            margin: 15px 0;
+        }
+
+        button {
+            margin: 0 5px;
+            padding: 5px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            border-width: 2px;
+            border-style: solid;
+        }
+
+        #roll-button {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #2e8b57;
+        }
+
+        #reset-button {
+            background-color: #f44336;
+            color: white;
+            border-color: #c62828;
+        }
+
+        .result-frame {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden; /* Prevents the frame itself from scrolling */
+        }
+
+        #result-text {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 10px;
+            overflow-y: auto; /* This creates the scrollbar */
+            height: 250px; /* Fixed height to enable scrolling */
+            max-height: 100%; /* Ensures it doesn't overflow its parent */
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .selected {
+            color: green;
+        }
+
+        .excluded {
+            color: red;
+        }
+
+        .note {
+            color: gray;
+            font-style: italic;
+            font-size: 12px;
+        }
+
+        .label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Apex Roller</h1>
+        
+        <div class="input-frame">
+            <h3>Enter four names</h3>
+            <div class="name-entry">
+                <label>Name 1:</label>
+                <input type="text" id="name1">
+            </div>
+            <div class="name-entry">
+                <label>Name 2:</label>
+                <input type="text" id="name2">
+            </div>
+            <div class="name-entry">
+                <label>Name 3:</label>
+                <input type="text" id="name3">
+            </div>
+            <div class="name-entry">
+                <label>Name 4:</label>
+                <input type="text" id="name4">
+            </div>
+        </div>
+        
+        <div class="button-frame">
+            <button id="roll-button">Roll</button>
+            <button id="reset-button">Reset</button>
+        </div>
+        
+        <div class="result-frame">
+            <h3>Results</h3>
+            <div id="result-text"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get DOM elements
+            const rollButton = document.getElementById('roll-button');
+            const resetButton = document.getElementById('reset-button');
+            const resultText = document.getElementById('result-text');
+            const nameInputs = [
+                document.getElementById('name1'),
+                document.getElementById('name2'),
+                document.getElementById('name3'),
+                document.getElementById('name4')
+            ];
+            
+            // State variables
+            let isFirstRoll = true;
+            let previousExcluded = null;
+            let allNames = [];
+            let previousSelected = [];
+            
+            // Add event listeners
+            rollButton.addEventListener('click', performRoll);
+            resetButton.addEventListener('click', reset);
+            
+            function performRoll() {
+                // If first roll, check and lock names
+                if (isFirstRoll) {
+                    // Get names from input fields
+                    allNames = nameInputs.map(input => input.value.trim());
+                    
+                    // Check that all names are entered
+                    if (!allNames.every(name => name)) {
+                        alert('Please fill in all name fields.');
+                        return;
+                    }
+                    
+                    // Check that all names are unique
+                    const uniqueNames = [...new Set(allNames)];
+                    if (uniqueNames.length !== 4) {
+                        alert('All names must be different.');
+                        return;
+                    }
+                    
+                    // Lock input fields after first roll
+                    nameInputs.forEach(input => {
+                        input.disabled = true;
+                    });
+                }
+                
+                let selectedNames;
+                let rollType;
+                
+                // Logic for first and subsequent rolls
+                if (isFirstRoll) {
+                    // First roll: randomly select 3 out of 4
+                    selectedNames = getRandomSubset(allNames, 3);
+                    previousSelected = [...selectedNames];
+                    
+                    // Determine who wasn't selected
+                    previousExcluded = allNames.find(name => !selectedNames.includes(name));
+                    
+                    rollType = "First roll";
+                    isFirstRoll = false;
+                } else {
+                    // For subsequent rolls:
+                    // 1. Previous excluded name must be included
+                    // 2. One of the previously included names becomes excluded
+                    
+                    // Choose a random name to exclude from those previously selected
+                    const newExcluded = previousSelected[Math.floor(Math.random() * previousSelected.length)];
+                    
+                    // Select all names except the newly excluded one
+                    selectedNames = allNames.filter(name => name !== newExcluded);
+                    
+                    // Update for next roll
+                    previousExcluded = newExcluded;
+                    previousSelected = [...selectedNames];
+                    
+                    rollType = "Repeat roll";
+                }
+                
+                // Display results with formatting
+                const resultHTML = `
+                    <div class="title">${rollType}:</div>
+                    ${selectedNames.map((name, index) => 
+                        `<div class="selected">${index + 1}. ${name}</div>`
+                    ).join('')}
+                    <div>
+                        <span class="label">Didn't drop: </span>
+                        <span class="excluded">${previousExcluded}</span>
+                    </div>
+                    ${!isFirstRoll ? '<div class="note">(Will be included in the next roll)</div>' : ''}
+                `;
+                
+                // Append to results
+                const resultEntry = document.createElement('div');
+                resultEntry.innerHTML = resultHTML;
+                resultText.appendChild(resultEntry);
+                
+                // Scroll to bottom
+                resultText.scrollTop = resultText.scrollHeight;
+            }
+            
+            function reset() {
+                // Reset state
+                isFirstRoll = true;
+                previousExcluded = null;
+                allNames = [];
+                previousSelected = [];
+                
+                // Clear results
+                resultText.innerHTML = '';
+                
+                // Unlock input fields and clear them
+                nameInputs.forEach(input => {
+                    input.disabled = false;
+                    input.value = '';
+                });
+                
+                // Focus first input
+                nameInputs[0].focus();
+            }
+            
+            function getRandomSubset(array, size) {
+                const shuffled = [...array].sort(() => 0.5 - Math.random());
+                return shuffled.slice(0, size);
+            }
+        });
+    </script>
+</body>
+</html>

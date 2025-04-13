@@ -35,3 +35,5 @@ This program enables four participants to take turns forming groups of three. It
 1. Activate virtual environment using Poetry:
 ```bash
 poetry shell
+
+2. Launch in your browser run index.html
